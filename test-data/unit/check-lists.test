@@ -78,6 +78,19 @@ class C: pass
 [builtins fixtures/list.pyi]
 [out]
 
+[case testListLiteralContextWithNonListUnionMember]
+from typing import Hashable, Sequence
+
+def f(value: list[bool] | Hashable | Sequence[str]) -> None: ...
+
+f(["a", "b"])
+value: list[bool] | Hashable | Sequence[str] = ["a", "b"]
+f(["a", 1])  # E: Argument 1 to "f" has incompatible type "list[object]"; expected "list[bool] | Hashable | Sequence[str]"
+reveal_type(["a", "b"])  # N: Revealed type is "builtins.list[builtins.str]"
+[builtins fixtures/list.pyi]
+[typing fixtures/typing-full.pyi]
+[out]
+
 [case testListWithStarExpr]
 (x, *a) = [1, 2, 3]
 a = [1, *[2, 3]]

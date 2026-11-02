@@ -5302,6 +5302,22 @@ class ExpressionChecker(ExpressionVisitor[Type], ExpressionCheckerSharedApi):
         return typ
 
     def check_lst_expr(self, e: ListExpr | SetExpr | TupleExpr, fullname: str, tag: str) -> Type:
+        type_context = get_proper_type(self.type_context[-1])
+        if e.items and fullname == "builtins.list" and isinstance(type_context, UnionType):
+            # If the literal's inferred type already matches one union member,
+            # do not let contextual inference from a different member produce
+            # spurious item errors. For example, ["a", "b"] is a
+            # MutableSequence[str] even when the union also contains list[bool].
+            with self.msg.filter_errors() as err, self.chk.local_type_map as tmap:
+                inferred_type = self.accept(e)
+            if (
+                not err.has_new_errors()
+                and not has_any_type(inferred_type)
+                and is_subtype(inferred_type, type_context, options=self.chk.options)
+            ):
+                self.chk.store_types(tmap)
+                return inferred_type
+
         # fast path
         t = self.fast_container_type(e, fullname)
         if t:
